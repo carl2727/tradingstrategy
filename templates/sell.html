@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Sell Form</h1>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    <div>
+      {{ form.coins.label }} {{ form.coins }}
+    </div>
+    <div>
+      {{ form.sell_bottom.label }} {{ form.sell_bottom }}
+    </div>
+    <div>
+      {{ form.sell_top.label }} {{ form.sell_top }}
+    </div>
+    <div>
+      {{ form.steps.label }} {{ form.steps }}
+    </div>
+    <div>
+      {{ form.submit }}
+    </div>
+  </form>
+{% endblock %}

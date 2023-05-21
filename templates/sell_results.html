@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Sell Results</h1>
+  <table>
+    <tr>
+      <th>Strategy</th>
+      <th>Average Profit</th>
+    </tr>
+    {% for strategy in sorted_strategies %}
+      <tr>
+        <td>{{ strategy[0] }}</td>
+        <td>{{ strategy[1] }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+{% endblock %}
