@@ -1,23 +1,75 @@
 {% extends 'base.html' %}
 
-{% block content %}
+{% block body %}
   <h1>Sell Form</h1>
-  <form method="POST">
+  <form method="POST" action="">
     {{ form.hidden_tag() }}
-    <div>
-      {{ form.coins.label }} {{ form.coins }}
+    <div class="form-group">
+      {{ form.coins.label }}
+      {{ form.coins(class="form-control") }}
+      {% for error in form.coins.errors %}
+        <span class="text-danger">{{ error }}</span>
+      {% endfor %}
     </div>
-    <div>
-      {{ form.sell_bottom.label }} {{ form.sell_bottom }}
+    
+    <div class="form-group">
+      {{ form.sell_bottom.label }}
+      {{ form.sell_bottom(class="form-control") }}
+      {% for error in form.sell_bottom.errors %}
+        <span class="text-danger">{{ error }}</span>
+      {% endfor %}
     </div>
-    <div>
-      {{ form.sell_top.label }} {{ form.sell_top }}
+
+    <div class="form-group">
+      {{ form.sell_top.label }}
+      {{ form.sell_top(class="form-control") }}
+      {% for error in form.sell_top.errors %}
+        <span class="text-danger">{{ error }}</span>
+      {% endfor %}
     </div>
-    <div>
-      {{ form.steps.label }} {{ form.steps }}
+
+    <div class="form-group">
+      {{ form.step_size.label }}
+      {{ form.step_size(class="form-control") }}
+      {% for error in form.sell_top.errors %}
+        <span class="text-danger">{{ error }}</span>
+      {% endfor %}
     </div>
-    <div>
-      {{ form.submit }}
+
+    <div class="form-group">
+      {{ form.steps.label }}
+      {{ form.steps(class="form-control") }}
+      {% for error in form.steps.errors %}
+        <span class="text-danger">{{ error }}</span>
+      {% endfor %}
+    </div>
+    
+    <div class="form-group">
+      {{ form.mu.label }}
+      {{ form.mu(class="form-control") }}
+      {% for error in form.mu.errors %}
+        <span class="text-danger">{{ error }}</span>
+      {% endfor %}
+    </div>
+
+    <div class="form-group">
+      {{ form.sigma.label }}
+      {{ form.sigma(class="form-control") }}
+      {% for error in form.sigma.errors %}
+        <span class="text-danger">{{ error }}</span>
+      {% endfor %}
+    </div>
+
+    <div class="form-group">
+      {{ form.number_sce.label }}
+      {{ form.number_sce(class="form-control") }}
+      {% for error in form.number_sce.errors %}
+        <span class="text-danger">{{ error }}</span>
+      {% endfor %}
+    </div>
+
+    <div class="form-group">
+      {{ form.submit(class="btn btn-primary") }}
     </div>
   </form>
 {% endblock %}

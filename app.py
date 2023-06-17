@@ -2,8 +2,13 @@ from flask import Flask, render_template
 import random
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import os
+from wtforms import Form, FloatField, IntegerField, StringField, SubmitField
 from wtforms.validators import DataRequired, NumberRange
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] ='mysql://username:password@localhost/db_name'
@@ -12,26 +17,37 @@ db = SQLAlchemy(app)
 
 # Classes
 class SellForm(FlaskForm):
-    coins = StringField('Coins', validators=[DataRequired(), NumberRange(min=0)])
-    sell_bottom = StringField('Sell Bottom', validators=[DataRequired(), NumberRange(min=0)])
-    sell_top = StringField('Sell Top', validators=[DataRequired(), NumberRange(min=0)])
-    steps = StringField('Steps', validators=[DataRequired(), NumberRange(min=1)])
-    mu = StringField('Scenario Mean', validators=[DataRequired(), NumberRange(min=0)])
-    sigma = StringField('Scenario Standard Deviation', validators=[DataRequired(), NumberRange(min=0)])
-    number_sce = StringField('Scenario Standard Deviation', validators=[DataRequired(), NumberRange(min = 1, max=999)])
+    coins = FloatField('Coins', validators=[DataRequired(), NumberRange(min=0)])
+    sell_bottom = FloatField('Sell Bottom', validators=[DataRequired(), NumberRange(min=0)])
+    sell_top = FloatField('Sell Top', validators=[DataRequired(), NumberRange(min=0)])
+    step_size = IntegerField('Step Size', validators=[DataRequired(), NumberRange(min=1)])
+    steps = IntegerField('Steps', validators=[DataRequired(), NumberRange(min=1)])
+    mu = FloatField('Scenario Mean', validators=[DataRequired(), NumberRange(min=0)])
+    sigma = FloatField('Scenario Standard Deviation', validators=[DataRequired(), NumberRange(min=0)])
+    number_sce = IntegerField('Number Of Scenarios', validators=[DataRequired(), NumberRange(min = 1, max=999)])
     submit = SubmitField('Sell')
 
-
+# Functions
+# Truncate floats
 def trunc(a, x):
     int1 = int(a * (10**x))/(10**x)
     return float(int1)
 
-def sell_order(coins, str_steps, price_normalize, sce):
+def sell_order(coins, str_steps, price_normalize, scenario):
+    print("sell_order arguments:")
+    print("coins:", coins)
+    print("str_steps:", str_steps)
+    print("price_normalize:", price_normalize)
+    print("scenario:", scenario)
     profit = 0    
     for i, val in enumerate(str_steps):
-        if val <= sce:
-            sell_amount = (price_normalize) / val
-            sell = sell_amount * val
+        try:
+            val = int(val)
+        except ValueError:
+            continue
+        if int(val) <= scenario:
+            sell_amount = (price_normalize) / int(val)
+            sell = sell_amount * int(val)
             coins -= sell_amount
             profit += sell
             # Debugging
@@ -43,19 +59,15 @@ def sell_order(coins, str_steps, price_normalize, sce):
 
 # Sell Strategies
 sell_strategies = []
-sell_bottom = 50000
-sell_top = 180000
-step_size = 2000
+sell_bottom = 0
+sell_top = 1
+step_size = 1
+steps = 1
 
-for i in range(sell_bottom, sell_top, step_size):
-    for j in range(i+step_size, sell_top+1, step_size):
-        sell_strategies.append({"name": f"Strategy {i}-{j}", "sell_top": j, "sell_bottom": i, "steps": 5})
-
-# Scenarios
-# mu = 120000
-# sigma = 20000
-# number_sce = 100
-# print(scenarios)
+def create_strategies(sell_bottom, sell_top, step_size, steps):
+    for i in range(sell_bottom, sell_top, step_size):
+        for j in range(i+step_size, sell_top+1, step_size):
+            sell_strategies.append({"name": f"Strategy {i}-{j}", "sell_top": j, "sell_bottom": i, "steps": 5})
 
 @app.route('/')
 def index():
@@ -70,12 +82,22 @@ def sell():
         coins = float(form.coins.data)
         sell_bottom = int(form.sell_bottom.data)
         sell_top = int(form.sell_top.data)
+        step_size = int(form.step_size.data)
         steps = int(form.steps.data)
         mu = float(form.mu.data)
         sigma = float(form.sigma.data)
         number_sce = int(form.number_sce.data)
 
-        
+        # Print form field values
+        print("coins:", coins)
+        print("sell_bottom:", sell_bottom)
+        print("sell_top:", sell_top)
+        print("steps:", steps)
+        print("mu:", mu)
+        print("sigma:", sigma)
+        print("number_sce:", number_sce)
+       
+        create_strategies(sell_bottom, sell_top, step_size, steps)
         scenarios = [random.gauss(mu, sigma) for i in range(number_sce)]
         for strategy in sell_strategies:
             # print(f"Simulating sell orders using {strategy['name']}...")
@@ -92,19 +114,27 @@ def sell():
             price_normalize = price_sum / price_denom
             # print(price_normalize)
             for scenario in scenarios:
+                coins = float(form.coins.data)
                 profit, coins = sell_order(coins, str_steps, price_normalize, scenario)
                 total_profit += profit
                 # print("scenario " + str(trunc(scenario,0)) + " profit: " + str(profit) + " total profit: " + str(total_profit))
             avg_profit = (total_profit / len(scenarios))
             avg_profit = int(avg_profit)
             strategy_profits.append((strategy['name'], avg_profit))
-            
-        sorted_strategies = sorted(strategy_profits, key=lambda x: x[1], reverse=True)
-        return render_template('sell_results.html', sorted_strategies=sorted_strategies)
-        
+                     
+        sorted_strategies = sorted(strategy_profits, key=lambda x: x[1], reverse=True)       
+        plt.hist(scenarios, bins='auto', color='skyblue', alpha=0.7)
+        plt.xlabel('Scenario Value')
+        plt.ylabel('Frequency')
+        plt.title('Distribution of Randomly Generated Scenarios')
+        plt.savefig(os.path.join(app.root_path, 'static', 'histogram.png'))  # Save the plot as a PNG image
+        plt.close()
+
+
         if not strategy_profits:
             flash('No results found.', 'warning')
             return redirect(url_for('sell'))
+        return render_template('sell_results.html', sorted_strategies=sorted_strategies)
 
     return render_template('sell.html', form=form)
 
