@@ -18,14 +18,25 @@ db = SQLAlchemy(app)
 # Classes
 class SellForm(FlaskForm):
     coins = FloatField('Coins', validators=[DataRequired(), NumberRange(min=0)])
-    sell_bottom = FloatField('Sell Bottom', validators=[DataRequired(), NumberRange(min=0)])
-    sell_top = FloatField('Sell Top', validators=[DataRequired(), NumberRange(min=0)])
-    step_size = IntegerField('Step Size', validators=[DataRequired(), NumberRange(min=1)])
+    sell_bottom = IntegerField('Sell Bottom', validators=[DataRequired(), NumberRange(min=0)])
+    sell_top = IntegerField('Sell Top', validators=[DataRequired(), NumberRange(min=0)])
     steps = IntegerField('Steps', validators=[DataRequired(), NumberRange(min=1)])
+    step_increment = IntegerField('Step Increment', validators=[DataRequired(), NumberRange(min=1)])
     mu = FloatField('Scenario Mean', validators=[DataRequired(), NumberRange(min=0)])
     sigma = FloatField('Scenario Standard Deviation', validators=[DataRequired(), NumberRange(min=0)])
     number_sce = IntegerField('Number Of Scenarios', validators=[DataRequired(), NumberRange(min = 1, max=999)])
     submit = SubmitField('Sell')
+
+class BuyForm(FlaskForm):
+    money = FloatField('Money', validators=[DataRequired(), NumberRange(min=0)])
+    buy_bottom = IntegerField('Buy Bottom', validators=[DataRequired(), NumberRange(min=0)])
+    buy_top = IntegerField('Buy Top', validators=[DataRequired(), NumberRange(min=0)])
+    steps = IntegerField('Steps', validators=[DataRequired(), NumberRange(min=1)])
+    step_increment = IntegerField('Step Increment', validators=[DataRequired(), NumberRange(min=1)])
+    mu = FloatField('Scenario Mean', validators=[DataRequired(), NumberRange(min=0)])
+    sigma = FloatField('Scenario Standard Deviation', validators=[DataRequired(), NumberRange(min=0)])
+    number_sce = IntegerField('Number Of Scenarios', validators=[DataRequired(), NumberRange(min=1, max=999)])
+    submit = SubmitField('Buy')
 
 # Functions
 # Truncate floats
@@ -34,11 +45,11 @@ def trunc(a, x):
     return float(int1)
 
 def sell_order(coins, str_steps, price_normalize, scenario):
-    print("sell_order arguments:")
-    print("coins:", coins)
-    print("str_steps:", str_steps)
-    print("price_normalize:", price_normalize)
-    print("scenario:", scenario)
+    # print("sell_order arguments:")
+    # print("coins:", coins)
+    # print("str_steps:", str_steps)
+    # print("price_normalize:", price_normalize)
+    # print("scenario:", scenario)
     profit = 0    
     for i, val in enumerate(str_steps):
         try:
@@ -50,29 +61,52 @@ def sell_order(coins, str_steps, price_normalize, scenario):
             sell = sell_amount * int(val)
             coins -= sell_amount
             profit += sell
-            # Debugging
-            # print(int(val))
-            # print("Sold " + str(trunc(sell_amount,4)) + " coins at " + str(int(price)) + " for " + str(trunc(sell,2)) + " New total = " + str(profit))
-    # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nTotal profit: " + str(trunc(profit,2)))
-    # print("Coins left: " + str(trunc(coins,4)))
     return profit, coins
 
+def buy_order(money, str_steps, price_normalize, scenario):
+    # print("buy_order arguments:")
+    # print("coins:", coins)
+    # print("str_steps:", str_steps)
+    # print("price_normalize:", price_normalize)
+    # print("scenario:", scenario)
+    coins = 0    
+    for i, val in enumerate(str_steps):
+        try:
+            val = int(val)
+        except ValueError:
+            continue
+        if int(val) <= scenario:
+            buy_amount = (price_normalize) / int(val)
+            buy = buy_amount * int(val)
+            money -= buy_amount
+            coins += buy
+    return money, coins
+
+
 # Sell Strategies
-sell_strategies = []
+
 sell_bottom = 0
 sell_top = 1
 step_size = 1
 steps = 1
+step_increment = 1
+sell_strategies = []
+buy_strategies = []
 
-def create_strategies(sell_bottom, sell_top, step_size, steps):
-    for i in range(sell_bottom, sell_top, step_size):
-        for j in range(i+step_size, sell_top+1, step_size):
-            sell_strategies.append({"name": f"Strategy {i}-{j}", "sell_top": j, "sell_bottom": i, "steps": 5})
 
+def create_sell_strategies(sell_bottom, sell_top, steps, step_increment):
+    for i in range(sell_bottom, sell_top, step_increment):
+        for j in range(i+step_increment, sell_top+1, step_increment):
+            sell_strategies.append({"name": f"Strategy {i}-{j}", "sell_top": j, "sell_bottom": i, "steps": steps})
+
+def create_buy_strategies(buy_bottom, buy_top, steps, step_increment):
+    for i in range(buy_bottom, buy_top, step_increment):
+        for j in range(i+step_increment, buy_top+1, step_increment):
+            buy_strategies.append({"name": f"Strategy {i}-{j}", "buy_top": j, "buy_bottom": i, "steps": steps})
+ 
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 @app.route('/sell.html', methods=['GET', 'POST'])
 def sell():
@@ -82,25 +116,24 @@ def sell():
         coins = float(form.coins.data)
         sell_bottom = int(form.sell_bottom.data)
         sell_top = int(form.sell_top.data)
-        step_size = int(form.step_size.data)
         steps = int(form.steps.data)
+        step_increment = int(form.step_increment.data)
         mu = float(form.mu.data)
         sigma = float(form.sigma.data)
         number_sce = int(form.number_sce.data)
 
         # Print form field values
-        print("coins:", coins)
-        print("sell_bottom:", sell_bottom)
-        print("sell_top:", sell_top)
-        print("steps:", steps)
-        print("mu:", mu)
-        print("sigma:", sigma)
-        print("number_sce:", number_sce)
+        # print("coins:", coins)
+        # print("sell_bottom:", sell_bottom)
+        # print("sell_top:", sell_top)
+        # print("steps:", steps)
+        # print("mu:", mu)
+        # print("sigma:", sigma)
+        # print("number_sce:", number_sce)
        
-        create_strategies(sell_bottom, sell_top, step_size, steps)
+        create_sell_strategies(sell_bottom, sell_top, steps, step_increment)
         scenarios = [random.gauss(mu, sigma) for i in range(number_sce)]
         for strategy in sell_strategies:
-            # print(f"Simulating sell orders using {strategy['name']}...")
             total_profit = 0
             step_size = (strategy["sell_top"] - strategy["sell_bottom"]) / (strategy["steps"] - 1)
             str_steps = []
@@ -127,7 +160,7 @@ def sell():
         plt.xlabel('Scenario Value')
         plt.ylabel('Frequency')
         plt.title('Distribution of Randomly Generated Scenarios')
-        plt.savefig(os.path.join(app.root_path, 'static', 'histogram.png'))  # Save the plot as a PNG image
+        plt.savefig(os.path.join(app.root_path, 'static', 'histogram.png'))
         plt.close()
 
 
@@ -138,6 +171,66 @@ def sell():
 
     return render_template('sell.html', form=form)
 
+@app.route('/buy.html', methods=['GET', 'POST'])
+def buy():
+    form = BuyForm()
+    strategy_amounts = []
+    if form.validate_on_submit():
+        money = float(form.money.data)
+        buy_bottom = int(form.buy_bottom.data)
+        buy_top = int(form.buy_top.data)
+        steps = int(form.steps.data)
+        step_increment = int(form.step_increment.data)
+        mu = float(form.mu.data)
+        sigma = float(form.sigma.data)
+        number_sce = int(form.number_sce.data)
+
+        # Generate scenarios
+        scenarios = [random.gauss(mu, sigma) for _ in range(number_sce)]
+
+        # Create buy strategies
+        create_buy_strategies(buy_bottom, buy_top, steps, step_increment)
+        
+        # Calculate total number of coins bought for each strategy
+        strategy_results = []
+        for strategy in buy_strategies:
+            total_coins = 0
+            step_size = (strategy["buy_top"] - strategy["buy_bottom"]) / (strategy["steps"] - 1)
+            str_steps = []
+            
+            for i in range(strategy["steps"]):
+                price = strategy["buy_top"] - (i * step_size)
+                str_steps.append(price)
+            price_sum = sum(str_steps)
+            price_denom = 0
+            for i in range(strategy["steps"]):
+                price_denom += price_sum / str_steps[i]
+            price_normalize = price_sum / price_denom            
+
+            for scenario in scenarios:
+                money = float(form.money.data)
+                coins, money = sell_order(money, str_steps, price_normalize, scenario)
+                total_coins += coins
+    
+            avg_coins = (total_coins / len(scenarios))
+            avg_coins = int(avg_coins)
+            strategy_amounts.append((strategy['name'], avg_coins))
+                     
+        sorted_strategies = sorted(strategy_amounts, key=lambda x: x[1], reverse=True)       
+        plt.hist(scenarios, bins='auto', color='skyblue', alpha=0.7)
+        plt.xlabel('Scenario Value')
+        plt.ylabel('Frequency')
+        plt.title('Distribution of Randomly Generated Scenarios')
+        plt.savefig(os.path.join(app.root_path, 'static', 'histogram.png'))
+        plt.close()
+
+
+        if not strategy_amounts:
+            flash('No results found.', 'warning')
+            return redirect(url_for('buy'))
+        return render_template('buy_results.html', sorted_strategies=sorted_strategies)
+
+    return render_template('buy.html', form=form)
 
 if __name__ == "__main__":
     app.run(debug=True)

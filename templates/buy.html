@@ -2,29 +2,29 @@
 
 {% block body %}
 <div class="form-container">
-  <h1>Sell Form</h1>
+  <h1>Buy Form</h1>
   <form method="POST" action="">
     {{ form.hidden_tag() }}
     <div class="form-row">
-      {{ form.coins.label }}
-      {{ form.coins(class="form-control") }}
-      {% for error in form.coins.errors %}
+      {{ form.money.label }}
+      {{ form.money(class="form-control") }}
+      {% for error in form.money.errors %}
         <span class="text-danger">{{ error }}</span>
       {% endfor %}
     </div>
     
     <div class="form-row">
-      {{ form.sell_bottom.label }}
-      {{ form.sell_bottom(class="form-control") }}
-      {% for error in form.sell_bottom.errors %}
+      {{ form.buy_bottom.label }}
+      {{ form.buy_bottom(class="form-control") }}
+      {% for error in form.buy_bottom.errors %}
         <span class="text-danger">{{ error }}</span>
       {% endfor %}
     </div>
 
     <div class="form-row">
-      {{ form.sell_top.label }}
-      {{ form.sell_top(class="form-control") }}
-      {% for error in form.sell_top.errors %}
+      {{ form.buy_top.label }}
+      {{ form.buy_top(class="form-control") }}
+      {% for error in form.buy_top.errors %}
         <span class="text-danger">{{ error }}</span>
       {% endfor %}
     </div>
