@@ -44,12 +44,7 @@ def trunc(a, x):
     int1 = int(a * (10**x))/(10**x)
     return float(int1)
 
-def sell_order(coins, str_steps, price_normalize, scenario):
-    # print("sell_order arguments:")
-    # print("coins:", coins)
-    # print("str_steps:", str_steps)
-    # print("price_normalize:", price_normalize)
-    # print("scenario:", scenario)
+def sell_order(coins, str_steps, price_normalize, scenario, file=None):
     profit = 0    
     for i, val in enumerate(str_steps):
         try:
@@ -61,14 +56,10 @@ def sell_order(coins, str_steps, price_normalize, scenario):
             sell = sell_amount * int(val)
             coins -= sell_amount
             profit += sell
+            file.write(f"Sell order - Coins: {coins}, Step: {val}, Profit: {profit}\n")
     return profit, coins
 
-def buy_order(money, str_steps, price_normalize, scenario):
-    # print("buy_order arguments:")
-    # print("coins:", coins)
-    # print("str_steps:", str_steps)
-    # print("price_normalize:", price_normalize)
-    # print("scenario:", scenario)
+def buy_order(money, str_steps, price_normalize, scenario, file=None):
     coins = 0    
     for i, val in enumerate(str_steps):
         try:
@@ -80,6 +71,7 @@ def buy_order(money, str_steps, price_normalize, scenario):
             buy = buy_amount * int(val)
             money -= buy_amount
             coins += buy
+            file.write(f"Buy order - Coins: {coins}, Step: {val}, Money: {money}\n")
     return money, coins
 
 
@@ -133,28 +125,29 @@ def sell():
        
         create_sell_strategies(sell_bottom, sell_top, steps, step_increment)
         scenarios = [random.gauss(mu, sigma) for i in range(number_sce)]
-        for strategy in sell_strategies:
-            total_profit = 0
-            step_size = (strategy["sell_top"] - strategy["sell_bottom"]) / (strategy["steps"] - 1)
-            str_steps = []
-            for i in range(strategy["steps"]):
-                price = strategy["sell_bottom"] + (i * step_size)
-                str_steps.append(price)
-            price_sum = sum(str_steps)
-            price_denom = 0
-            for i in range(strategy["steps"]):
-                price_denom += price_sum / str_steps[i]
-            price_normalize = price_sum / price_denom
-            # print(price_normalize)
-            for scenario in scenarios:
-                coins = float(form.coins.data)
-                profit, coins = sell_order(coins, str_steps, price_normalize, scenario)
-                total_profit += profit
-                # print("scenario " + str(trunc(scenario,0)) + " profit: " + str(profit) + " total profit: " + str(total_profit))
-            avg_profit = (total_profit / len(scenarios))
-            avg_profit = int(avg_profit)
-            strategy_profits.append((strategy['name'], avg_profit))
-                     
+        with open('sell_report.txt', 'w') as file:
+            for strategy in sell_strategies:
+                total_profit = 0
+                step_size = (strategy["sell_top"] - strategy["sell_bottom"]) / (strategy["steps"] - 1)
+                str_steps = []
+                for i in range(strategy["steps"]):
+                    price = strategy["sell_bottom"] + (i * step_size)
+                    str_steps.append(price)
+                price_sum = sum(str_steps)
+                price_denom = 0
+                for i in range(strategy["steps"]):
+                    price_denom += price_sum / str_steps[i]
+                price_normalize = price_sum / price_denom
+                # print(price_normalize)
+                for scenario in scenarios:
+                    coins = float(form.coins.data)
+                    profit, coins = sell_order(coins, str_steps, price_normalize, scenario, file=file)
+                    total_profit += profit
+                    # print("scenario " + str(trunc(scenario,0)) + " profit: " + str(profit) + " total profit: " + str(total_profit))
+                avg_profit = (total_profit / len(scenarios))
+                avg_profit = int(avg_profit)
+                strategy_profits.append((strategy['name'], avg_profit))
+                        
         sorted_strategies = sorted(strategy_profits, key=lambda x: x[1], reverse=True)       
         plt.hist(scenarios, bins='auto', color='skyblue', alpha=0.7)
         plt.xlabel('Scenario Value')
@@ -193,28 +186,29 @@ def buy():
         
         # Calculate total number of coins bought for each strategy
         strategy_results = []
-        for strategy in buy_strategies:
-            total_coins = 0
-            step_size = (strategy["buy_top"] - strategy["buy_bottom"]) / (strategy["steps"] - 1)
-            str_steps = []
-            
-            for i in range(strategy["steps"]):
-                price = strategy["buy_top"] - (i * step_size)
-                str_steps.append(price)
-            price_sum = sum(str_steps)
-            price_denom = 0
-            for i in range(strategy["steps"]):
-                price_denom += price_sum / str_steps[i]
-            price_normalize = price_sum / price_denom            
+        with open('buy_report.txt', 'w') as file:
+            for strategy in buy_strategies:
+                total_coins = 0
+                step_size = (strategy["buy_top"] - strategy["buy_bottom"]) / (strategy["steps"] - 1)
+                str_steps = []
+                
+                for i in range(strategy["steps"]):
+                    price = strategy["buy_top"] - (i * step_size)
+                    str_steps.append(price)
+                price_sum = sum(str_steps)
+                price_denom = 0
+                for i in range(strategy["steps"]):
+                    price_denom += price_sum / str_steps[i]
+                price_normalize = price_sum / price_denom            
 
-            for scenario in scenarios:
-                money = float(form.money.data)
-                coins, money = sell_order(money, str_steps, price_normalize, scenario)
-                total_coins += coins
-    
-            avg_coins = (total_coins / len(scenarios))
-            avg_coins = int(avg_coins)
-            strategy_amounts.append((strategy['name'], avg_coins))
+                for scenario in scenarios:
+                    money = float(form.money.data)
+                    coins, money = sell_order(money, str_steps, price_normalize, scenario, file=file)
+                    total_coins += coins
+        
+                avg_coins = (total_coins / len(scenarios))
+                avg_coins = int(avg_coins)
+                strategy_amounts.append((strategy['name'], avg_coins))
                      
         sorted_strategies = sorted(strategy_amounts, key=lambda x: x[1], reverse=True)       
         plt.hist(scenarios, bins='auto', color='skyblue', alpha=0.7)
