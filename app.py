@@ -3,9 +3,11 @@ import random
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 import matplotlib
+import numpy as np
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
+import seaborn as sns
 from wtforms import Form, FloatField, IntegerField, StringField, SubmitField
 from wtforms.validators import DataRequired, NumberRange
 
@@ -44,8 +46,25 @@ def trunc(a, x):
     int1 = int(a * (10**x))/(10**x)
     return float(int1)
 
+def plot_histogram(data, filename):
+    # Generate histogram
+    plt.hist(data, bins='auto', color='skyblue', alpha=0.7)
+
+    # Add rug plot
+    sns.rugplot(data, height=0.1, color='black')
+
+    # Customize labels and title
+    plt.xlabel('Scenario Value')
+    plt.ylabel('Frequency')
+    plt.title('Distribution of Randomly Generated Scenarios')
+
+    # Save the modified histogram plot
+    plt.savefig(os.path.join(app.root_path, 'static', filename))
+    plt.close()
+
 def sell_order(coins, str_steps, price_normalize, scenario, file=None):
-    profit = 0    
+    profit = 0
+    file.write(f"Coins: {coins} - ")
     for i, val in enumerate(str_steps):
         try:
             val = int(val)
@@ -56,11 +75,13 @@ def sell_order(coins, str_steps, price_normalize, scenario, file=None):
             sell = sell_amount * int(val)
             coins -= sell_amount
             profit += sell
-            file.write(f"Sell order - Coins: {coins}, Step: {val}, Profit: {profit}\n")
+            file.write(f"at {val}, sold {sell_amount} for {sell}. Total Profit: {profit}\n")
+            file.flush()
     return profit, coins
 
 def buy_order(money, str_steps, price_normalize, scenario, file=None):
-    coins = 0    
+    coins = 0
+    file.write(f"Buy order - Coins: {coins}, Step: {val}, Money: {money}\n")
     for i, val in enumerate(str_steps):
         try:
             val = int(val)
@@ -71,30 +92,28 @@ def buy_order(money, str_steps, price_normalize, scenario, file=None):
             buy = buy_amount * int(val)
             money -= buy_amount
             coins += buy
-            file.write(f"Buy order - Coins: {coins}, Step: {val}, Money: {money}\n")
+            file.write(f"Coins: {coins}, Step: {val}, Money: {money}\n")
+            file.flush()
     return money, coins
 
-
-# Sell Strategies
-
-sell_bottom = 0
-sell_top = 1
-step_size = 1
-steps = 1
-step_increment = 1
 sell_strategies = []
 buy_strategies = []
 
 
 def create_sell_strategies(sell_bottom, sell_top, steps, step_increment):
+    sell_strategies.clear()
     for i in range(sell_bottom, sell_top, step_increment):
         for j in range(i+step_increment, sell_top+1, step_increment):
             sell_strategies.append({"name": f"Strategy {i}-{j}", "sell_top": j, "sell_bottom": i, "steps": steps})
 
 def create_buy_strategies(buy_bottom, buy_top, steps, step_increment):
+    buy_strategies.clear()
     for i in range(buy_bottom, buy_top, step_increment):
         for j in range(i+step_increment, buy_top+1, step_increment):
             buy_strategies.append({"name": f"Strategy {i}-{j}", "buy_top": j, "buy_bottom": i, "steps": steps})
+
+
+
  
 @app.route('/')
 def index():
@@ -113,23 +132,22 @@ def sell():
         mu = float(form.mu.data)
         sigma = float(form.sigma.data)
         number_sce = int(form.number_sce.data)
-
-        # Print form field values
-        # print("coins:", coins)
-        # print("sell_bottom:", sell_bottom)
-        # print("sell_top:", sell_top)
-        # print("steps:", steps)
-        # print("mu:", mu)
-        # print("sigma:", sigma)
-        # print("number_sce:", number_sce)
-       
+      
         create_sell_strategies(sell_bottom, sell_top, steps, step_increment)
         scenarios = [random.gauss(mu, sigma) for i in range(number_sce)]
+        scenarios_str = ', '.join(map(str, scenarios))
+        plot_histogram(scenarios, 'histogram.png')
         with open('sell_report.txt', 'w') as file:
+            file.write(f"User input: coins: {coins}, sell_bottom: {sell_bottom}, sell_top: {sell_top,}, steps: {steps}, step_increment: {step_increment}, mu: {mu}, sigma: {sigma}, number_sce: {number_sce}\n\n")
+            file.write(f"Sell Strategies:\n{sell_strategies}\n\n")
+            file.write(f"Scenarios\n{scenarios_str}\n\n")
+            file.flush()
             for strategy in sell_strategies:
                 total_profit = 0
                 step_size = (strategy["sell_top"] - strategy["sell_bottom"]) / (strategy["steps"] - 1)
                 str_steps = []
+                file.write(f"\nStrategy: {strategy}\n")
+                file.flush()
                 for i in range(strategy["steps"]):
                     price = strategy["sell_bottom"] + (i * step_size)
                     str_steps.append(price)
@@ -140,6 +158,7 @@ def sell():
                 price_normalize = price_sum / price_denom
                 # print(price_normalize)
                 for scenario in scenarios:
+                    file.write(f"\nScenario: {scenario}\n")
                     coins = float(form.coins.data)
                     profit, coins = sell_order(coins, str_steps, price_normalize, scenario, file=file)
                     total_profit += profit
@@ -149,13 +168,6 @@ def sell():
                 strategy_profits.append((strategy['name'], avg_profit))
                         
         sorted_strategies = sorted(strategy_profits, key=lambda x: x[1], reverse=True)       
-        plt.hist(scenarios, bins='auto', color='skyblue', alpha=0.7)
-        plt.xlabel('Scenario Value')
-        plt.ylabel('Frequency')
-        plt.title('Distribution of Randomly Generated Scenarios')
-        plt.savefig(os.path.join(app.root_path, 'static', 'histogram.png'))
-        plt.close()
-
 
         if not strategy_profits:
             flash('No results found.', 'warning')
@@ -168,6 +180,7 @@ def sell():
 def buy():
     form = BuyForm()
     strategy_amounts = []
+    # Validate forms
     if form.validate_on_submit():
         money = float(form.money.data)
         buy_bottom = int(form.buy_bottom.data)
@@ -177,15 +190,15 @@ def buy():
         mu = float(form.mu.data)
         sigma = float(form.sigma.data)
         number_sce = int(form.number_sce.data)
-
         # Generate scenarios
         scenarios = [random.gauss(mu, sigma) for _ in range(number_sce)]
-
+        # Plot histogram
+        plot_histogram(scenarios, 'histogram.png')
         # Create buy strategies
-        create_buy_strategies(buy_bottom, buy_top, steps, step_increment)
-        
+        create_buy_strategies(buy_bottom, buy_top, steps, step_increment)        
         # Calculate total number of coins bought for each strategy
         strategy_results = []
+        
         with open('buy_report.txt', 'w') as file:
             for strategy in buy_strategies:
                 total_coins = 0
@@ -211,13 +224,6 @@ def buy():
                 strategy_amounts.append((strategy['name'], avg_coins))
                      
         sorted_strategies = sorted(strategy_amounts, key=lambda x: x[1], reverse=True)       
-        plt.hist(scenarios, bins='auto', color='skyblue', alpha=0.7)
-        plt.xlabel('Scenario Value')
-        plt.ylabel('Frequency')
-        plt.title('Distribution of Randomly Generated Scenarios')
-        plt.savefig(os.path.join(app.root_path, 'static', 'histogram.png'))
-        plt.close()
-
 
         if not strategy_amounts:
             flash('No results found.', 'warning')

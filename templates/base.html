@@ -8,6 +8,19 @@
     {% block head %}{% endblock %}
 </head>
 <body>
-    {% block body %}{% endblock %}
+    <header>
+        <nav class="centered-nav">
+            <ul>
+                <li><a href="{{ url_for('buy') }}">Buy</a></li>
+                <li><a href="{{ url_for('sell') }}">Sell</a></li>
+                <li><a href="#">Scenario</a></li>
+            </ul>
+        </nav>
+    </header>
+    <div class="main-section">
+    <main>
+        {% block body %}{% endblock %}
+    </main>
+    </div>
 </body>
 </html>
