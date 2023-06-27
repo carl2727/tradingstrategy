@@ -8,6 +8,7 @@
 }
 
 .form-row label {
+  color: whitesmoke;
   flex: 0 0 120px;
   margin-right: 10px;
 }
@@ -16,13 +17,16 @@
   flex: 1 0 100px;
 }
 
-
 .form-container {
   width: 500px;
   margin: 0 auto;
+  background-color: #4b4b4b; /* Set the background color of the container */
+  padding: 20px; /* Add padding to the container */
+  border-radius: 8px;
 }
 
 h1 {
+  color: whitesmoke;
   text-align: center;
 }
 
@@ -50,20 +54,27 @@ h1 {
   font-size: 24px;
 }
 
-
 body {
   font-family: 'Lato', sans-serif;
-  background-color: #979797;
+  background-color: #4b4b4b;
 }
 
 .container {
-  background-color: #fff;
+  display: flex; /* Add flex display to the container */
+  background-color: #3b3b3b;
   padding: 20px;
   border-radius: 8px;
+  color: rgba(245, 245, 245, 0.815);
 }
 
-.main-section {
-  background-color: #979797; /* Adjust the color as desired */
-  padding: 20px;
-  border-radius: 8px;
+.left-container {
+  flex: 1;
+}
+
+.middle-container {
+  flex: 1;
+}
+
+.right-container {
+  flex: 1;
 }

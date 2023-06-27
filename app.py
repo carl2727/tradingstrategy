@@ -47,24 +47,22 @@ def trunc(a, x):
     return float(int1)
 
 def plot_histogram(data, filename):
+    sns.set_palette("dark")    
     # Generate histogram
-    plt.hist(data, bins='auto', color='skyblue', alpha=0.7)
-
+    plt.hist(data, bins='auto', color='darkblue', alpha=0.7)    
     # Add rug plot
-    sns.rugplot(data, height=0.1, color='black')
-
+    sns.rugplot(data, height=0.1, color='black')    
     # Customize labels and title
     plt.xlabel('Scenario Value')
     plt.ylabel('Frequency')
-    plt.title('Distribution of Randomly Generated Scenarios')
-
+    plt.title('Distribution of Randomly Generated Scenarios')    
     # Save the modified histogram plot
     plt.savefig(os.path.join(app.root_path, 'static', filename))
     plt.close()
 
 def sell_order(coins, str_steps, price_normalize, scenario, file=None):
     profit = 0
-    file.write(f"Coins: {coins} - ")
+    file.write(f"Sell order - Coins: {coins}\n")
     for i, val in enumerate(str_steps):
         try:
             val = int(val)
@@ -81,18 +79,18 @@ def sell_order(coins, str_steps, price_normalize, scenario, file=None):
 
 def buy_order(money, str_steps, price_normalize, scenario, file=None):
     coins = 0
-    file.write(f"Buy order - Coins: {coins}, Step: {val}, Money: {money}\n")
+    file.write(f"Buy order - Money: {money}\n")
     for i, val in enumerate(str_steps):
         try:
             val = int(val)
         except ValueError:
             continue
-        if int(val) <= scenario:
+        if int(val) >= scenario:
             buy_amount = (price_normalize) / int(val)
             buy = buy_amount * int(val)
-            money -= buy_amount
-            coins += buy
-            file.write(f"Coins: {coins}, Step: {val}, Money: {money}\n")
+            money -= buy
+            coins += buy_amount
+            file.write(f"at : {val}, bought {buy_amount} for {buy}, Wallet: {coins}\n")
             file.flush()
     return money, coins
 
@@ -112,9 +110,6 @@ def create_buy_strategies(buy_bottom, buy_top, steps, step_increment):
         for j in range(i+step_increment, buy_top+1, step_increment):
             buy_strategies.append({"name": f"Strategy {i}-{j}", "buy_top": j, "buy_bottom": i, "steps": steps})
 
-
-
- 
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -122,7 +117,9 @@ def index():
 @app.route('/sell.html', methods=['GET', 'POST'])
 def sell():
     form = SellForm()
+    sorted_strategies = []
     strategy_profits = []
+    # Validate forms
     if form.validate_on_submit():
         coins = float(form.coins.data)
         sell_bottom = int(form.sell_bottom.data)
@@ -148,6 +145,7 @@ def sell():
                 str_steps = []
                 file.write(f"\nStrategy: {strategy}\n")
                 file.flush()
+                # Writing all strategy steps to a list
                 for i in range(strategy["steps"]):
                     price = strategy["sell_bottom"] + (i * step_size)
                     str_steps.append(price)
@@ -156,29 +154,32 @@ def sell():
                 for i in range(strategy["steps"]):
                     price_denom += price_sum / str_steps[i]
                 price_normalize = price_sum / price_denom
-                # print(price_normalize)
+
                 for scenario in scenarios:
                     file.write(f"\nScenario: {scenario}\n")
                     coins = float(form.coins.data)
                     profit, coins = sell_order(coins, str_steps, price_normalize, scenario, file=file)
                     total_profit += profit
-                    # print("scenario " + str(trunc(scenario,0)) + " profit: " + str(profit) + " total profit: " + str(total_profit))
+                    
                 avg_profit = (total_profit / len(scenarios))
                 avg_profit = int(avg_profit)
                 strategy_profits.append((strategy['name'], avg_profit))
-                        
-        sorted_strategies = sorted(strategy_profits, key=lambda x: x[1], reverse=True)       
+
+            sorted_strategies = sorted(strategy_profits, key=lambda x: x[1], reverse=True)       
+            file.write(f"Sorted Strategies: {sorted_strategies}")
+            file.close()
 
         if not strategy_profits:
             flash('No results found.', 'warning')
             return redirect(url_for('sell'))
-        return render_template('sell_results.html', sorted_strategies=sorted_strategies)
+        return render_template('sell_results.html', sorted_strategies=sorted_strategies, scenarios=scenarios)
 
     return render_template('sell.html', form=form)
 
 @app.route('/buy.html', methods=['GET', 'POST'])
 def buy():
     form = BuyForm()
+    sorted_strategies = []
     strategy_amounts = []
     # Validate forms
     if form.validate_on_submit():
@@ -190,21 +191,24 @@ def buy():
         mu = float(form.mu.data)
         sigma = float(form.sigma.data)
         number_sce = int(form.number_sce.data)
-        # Generate scenarios
+        # Create Strategies
+        create_buy_strategies(buy_bottom, buy_top, steps, step_increment)
         scenarios = [random.gauss(mu, sigma) for _ in range(number_sce)]
-        # Plot histogram
-        plot_histogram(scenarios, 'histogram.png')
-        # Create buy strategies
-        create_buy_strategies(buy_bottom, buy_top, steps, step_increment)        
-        # Calculate total number of coins bought for each strategy
-        strategy_results = []
-        
+        scenarios_str = ', '.join(map(str, scenarios))
+        plot_histogram(scenarios, 'histogram.png')        
+        # Report
         with open('buy_report.txt', 'w') as file:
+            file.write(f"User input: money: {money}, buy_bottom: {buy_bottom}, buy_top: {buy_top}, steps: {steps}, step_increment: {step_increment}, mu: {mu}, sigma: {sigma}, number_sce: {number_sce}\n\n")
+            file.write(f"Buy Strategies:\n{buy_strategies}\n\n")
+            file.write(f"Scenarios\n{scenarios_str}\n\n")
+            file.flush()
             for strategy in buy_strategies:
                 total_coins = 0
                 step_size = (strategy["buy_top"] - strategy["buy_bottom"]) / (strategy["steps"] - 1)
                 str_steps = []
-                
+                file.write(f"\nStrategy: {strategy}\n")
+                file.flush()
+                # Writing all strategy steps to a list
                 for i in range(strategy["steps"]):
                     price = strategy["buy_top"] - (i * step_size)
                     str_steps.append(price)
@@ -215,15 +219,21 @@ def buy():
                 price_normalize = price_sum / price_denom            
 
                 for scenario in scenarios:
+                    file.write(f"\nScenario: {scenario}\n")
                     money = float(form.money.data)
-                    coins, money = sell_order(money, str_steps, price_normalize, scenario, file=file)
+                    money, coins = buy_order(money, str_steps, price_normalize, scenario, file=file)
                     total_coins += coins
         
                 avg_coins = (total_coins / len(scenarios))
-                avg_coins = int(avg_coins)
-                strategy_amounts.append((strategy['name'], avg_coins))
-                     
-        sorted_strategies = sorted(strategy_amounts, key=lambda x: x[1], reverse=True)       
+                avg_rating = (ratings / len(scenarios))
+                # avg_coins = int(avg_coins)
+                file.write(f"avg_coins: {avg_coins} total_coins {total_coins}\n")
+                strategy_amounts.append((strategy['name'], avg_coins, avg_rating))
+                                    
+        
+            sorted_strategies = sorted(strategy_amounts, key=lambda x: x[1], reverse=True)       
+            file.write(f"Sorted Strategies: {sorted_strategies}\n")
+            file.close()
 
         if not strategy_amounts:
             flash('No results found.', 'warning')
