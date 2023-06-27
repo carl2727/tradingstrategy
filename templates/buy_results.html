@@ -11,14 +11,16 @@
     <thead>
       <tr>
         <th>Strategy Name</th>
-        <th>Average Value</th>
+        <th>Average Amount</th>
+        <th>Average Rating</th>
       </tr>
     </thead>
     <tbody>
       {% for strategy in sorted_strategies %}
         <tr>
-          <td>{{ strategy[0] }}</td>
-          <td>{{ strategy[1] }}</td>
+          <td>{{ strategy[0]}}</td>
+          <td>{{ strategy[1]|round(3)}}</td>
+          <td>{{ strategy[2]|round(3)}}</td>
         </tr>
       {% endfor %}
     </tbody>

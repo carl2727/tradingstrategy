@@ -40,6 +40,13 @@ class BuyForm(FlaskForm):
     number_sce = IntegerField('Number Of Scenarios', validators=[DataRequired(), NumberRange(min=1, max=999)])
     submit = SubmitField('Buy')
 
+class ScenarioForm(FlaskForm):
+    
+    mu = FloatField('Scenario Mean', validators=[DataRequired(), NumberRange(min=0)])
+    sigma = FloatField('Scenario Standard Deviation', validators=[DataRequired(), NumberRange(min=0)])
+    number_sce = IntegerField('Number Of Scenarios', validators=[DataRequired(), NumberRange(min=1, max=999)])
+    submit = SubmitField('Create')
+
 # Functions
 # Truncate floats
 def trunc(a, x):
@@ -79,6 +86,7 @@ def sell_order(coins, str_steps, price_normalize, scenario, file=None):
 
 def buy_order(money, str_steps, price_normalize, scenario, file=None):
     coins = 0
+    rating = 0
     file.write(f"Buy order - Money: {money}\n")
     for i, val in enumerate(str_steps):
         try:
@@ -90,9 +98,10 @@ def buy_order(money, str_steps, price_normalize, scenario, file=None):
             buy = buy_amount * int(val)
             money -= buy
             coins += buy_amount
+            rating += (scenario/val)/len(str_steps)
             file.write(f"at : {val}, bought {buy_amount} for {buy}, Wallet: {coins}\n")
             file.flush()
-    return money, coins
+    return money, coins, rating
 
 sell_strategies = []
 buy_strategies = []
@@ -160,9 +169,8 @@ def sell():
                     coins = float(form.coins.data)
                     profit, coins = sell_order(coins, str_steps, price_normalize, scenario, file=file)
                     total_profit += profit
-                    
+                            
                 avg_profit = (total_profit / len(scenarios))
-                avg_profit = int(avg_profit)
                 strategy_profits.append((strategy['name'], avg_profit))
 
             sorted_strategies = sorted(strategy_profits, key=lambda x: x[1], reverse=True)       
@@ -204,6 +212,7 @@ def buy():
             file.flush()
             for strategy in buy_strategies:
                 total_coins = 0
+                total_rating = 0
                 step_size = (strategy["buy_top"] - strategy["buy_bottom"]) / (strategy["steps"] - 1)
                 str_steps = []
                 file.write(f"\nStrategy: {strategy}\n")
@@ -221,17 +230,16 @@ def buy():
                 for scenario in scenarios:
                     file.write(f"\nScenario: {scenario}\n")
                     money = float(form.money.data)
-                    money, coins = buy_order(money, str_steps, price_normalize, scenario, file=file)
+                    money, coins, rating = buy_order(money, str_steps, price_normalize, scenario, file=file)
                     total_coins += coins
+                    total_rating += rating
         
                 avg_coins = (total_coins / len(scenarios))
-                avg_rating = (ratings / len(scenarios))
-                # avg_coins = int(avg_coins)
+                avg_rating = (total_rating / len(scenarios))
                 file.write(f"avg_coins: {avg_coins} total_coins {total_coins}\n")
                 strategy_amounts.append((strategy['name'], avg_coins, avg_rating))
                                     
-        
-            sorted_strategies = sorted(strategy_amounts, key=lambda x: x[1], reverse=True)       
+                sorted_strategies = sorted(strategy_amounts, key=lambda x: x[1], reverse=True)       
             file.write(f"Sorted Strategies: {sorted_strategies}\n")
             file.close()
 
@@ -241,6 +249,33 @@ def buy():
         return render_template('buy_results.html', sorted_strategies=sorted_strategies)
 
     return render_template('buy.html', form=form)
+
+@app.route('/scenarios.html', methods=['GET', 'POST'])
+def scenario():
+    form = ScenarioForm()
+    if form.validate_on_submit():
+        mu = float(form.mu.data)
+        sigma = float(form.sigma.data)
+        number_sce = int(form.number_sce.data)
+        scenarios = [random.gauss(mu, sigma) for i in range(number_sce)]
+        scenarios_str = ', '.join(map(str, scenarios))
+        percentiles = np.percentile(scenarios, [5, 95])
+        sce_stats =  {
+            'mu': mu,
+            'sigma': sigma,
+            'min': min(scenarios),
+            'max': max(scenarios),
+            '5th_percentile': percentiles[0],
+            '95th_percentile': percentiles[1]}   
+        plot_histogram(scenarios, 'histogram.png') 
+        with open('scenario_report.txt', 'w') as file:
+            file.write(f"Scenario parameters: mu: {mu}, sigma: {sigma}, number_sce: {number_sce}\n\n")
+            file.write(f"Scenarios\n{scenarios_str}\n\n")
+            file.close()
+        sorted_scenarios = sorted(scenarios, reverse=True)   
+        return render_template('scenario_results.html', sorted_scenarios = sorted_scenarios, sce_stats = sce_stats)
+    
+    return render_template('scenarios.html', form=form)
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -78,3 +78,18 @@ body {
 .right-container {
   flex: 1;
 }
+
+.table {
+  border-spacing: 0.5em;
+}
+
+.table td {
+  padding: 0.5em;
+  color: lightgrey;
+  text-align: left;
+}
+
+.table th {
+  color: lightgrey;
+  text-align: left;
+}

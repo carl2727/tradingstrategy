@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<div class="form-container">
+  <h1>Buy Form</h1>
+  <form method="POST" action="">
+    {{ form.hidden_tag() }}
+    <div class="form-row">
+      {{ form.mu.label }}
+      {{ form.mu(class="form-control") }}
+      {% for error in form.mu.errors %}
+        <span class="text-danger">{{ error }}</span>
+      {% endfor %}
+    </div>
+
+    <div class="form-row">
+      {{ form.sigma.label }}
+      {{ form.sigma(class="form-control") }}
+      {% for error in form.sigma.errors %}
+        <span class="text-danger">{{ error }}</span>
+      {% endfor %}
+    </div>
+
+    <div class="form-row">
+      {{ form.number_sce.label }}
+      {{ form.number_sce(class="form-control") }}
+      {% for error in form.number_sce.errors %}
+        <span class="text-danger">{{ error }}</span>
+      {% endfor %}
+    </div>
+
+    <div class="form-row">
+      {{ form.submit(class="btn btn-primary") }}
+    </div>
+  </form>
+</div>
+{% endblock %}
