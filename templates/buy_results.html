@@ -1,29 +1,47 @@
 {% extends 'base.html' %}
 
 {% block body %}
-<div class="form-container">
-  <h1>Buy Results</h1>
-
-  
-  <img src="{{ url_for('static', filename='histogram.png') }}" alt="Scatter Plot">
-
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Strategy Name</th>
-        <th>Average Amount</th>
-        <th>Average Rating</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for strategy in sorted_strategies %}
-        <tr>
-          <td>{{ strategy[0]}}</td>
-          <td>{{ strategy[1]|round(3)}}</td>
-          <td>{{ strategy[2]|round(3)}}</td>
-        </tr>
+<div class="container">
+    <div class="left-container">
+      <h2>Scenarios</h2>
+      <ul class="multi-column-list">
+      {% for scenario in sorted_scenarios %}
+        <li>{{ scenario|round(2)}}</li>
       {% endfor %}
-    </tbody>
-  </table>
+    </ul>
+  </div>
+  
+  <div class="middle-container">
+    <h2>Buy Results</h2>
+    <img src="{{ url_for('static', filename='histogram.png') }}" alt="Histogram">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Strategy Name</th>
+          <th>Average Amount</th>
+          <th>Average Rating</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for strategy in sorted_strategies %}
+          <tr>
+            <td>{{ strategy[0]}}</td>
+            <td>{{ strategy[1]|round(3)}}</td>
+            <td>{{ strategy[2]|round(3)}}</td>
+          </tr>
+        {% endfor %}
+      </div>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="right-container">
+    <h2>Parameters</h2>
+    <ul style="list-style-type: none; padding-left: 0;">
+      {% for key, value in sce_stats.items() %}
+      <li style="font-size: 16px;"><strong>{{ key }}:</strong>{{ value|round(2) }}</li>
+      {% endfor %}
+    </ul>
+  </div>
 </div>
 {% endblock %}

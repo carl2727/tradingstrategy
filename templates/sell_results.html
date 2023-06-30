@@ -3,7 +3,7 @@
 {% block body %}
 <div class="container">
   <div class="left-container">
-    <h1>Sell Results</h1>
+    <h2>Sell Results</h2>
     <img src="{{ url_for('static', filename='histogram.png') }}" alt="Histogram">
   </div>
 
@@ -31,8 +31,8 @@
   <div class="right-container">
     <h2>Scenarios</h2>
     <ul>
-      {% for scenario in scenarios %}
-        <li>{{ scenario}}</li>
+      {% for scenario in sorted_scenarios %}
+      <li>{{ scenario|round(2)}}</li>
       {% endfor %}
     </ul>
   </div>

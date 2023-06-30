@@ -2,21 +2,25 @@
 
 {% block body %}
 <div class="container">
-  <div class="left-container">
-    <h1>Scenario Results</h1>
-    <img src="{{ url_for('static', filename='histogram.png') }}" alt="Histogram">
-    <ul style="list-style-type: none; padding-left: 0;">
-        {% for key, value in sce_stats.items() %}
-        <li><strong>{{ key }}:</strong> {{ value|round(2) }}</li>
+    <div class="left-container">
+      <h2>Scenarios</h2>
+      <ul class="multi-column-list">
+      {% for scenario in sorted_scenarios %}
+        <li>{{ scenario|round(2)}}</li>
       {% endfor %}
     </ul>
   </div>
-
+  
   <div class="middle-container">
-    <h2>Scenarios</h2>
+    <h2>Scenario Results</h2>
+    <img src="{{ url_for('static', filename='histogram.png') }}" alt="Histogram">
+  </div>
+
+  <div class="right-container">
+    <h2>Parameters</h2>
     <ul style="list-style-type: none; padding-left: 0;">
-      {% for scenario in sorted_scenarios %}
-        <li>{{ scenario|round(2)}}</li>
+      {% for key, value in sce_stats.items() %}
+      <li style="font-size: 16px;"><strong>{{ key }}:</strong>{{ value|round(2) }}</li>
       {% endfor %}
     </ul>
   </div>

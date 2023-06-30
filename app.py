@@ -11,13 +11,13 @@ import seaborn as sns
 from wtforms import Form, FloatField, IntegerField, StringField, SubmitField
 from wtforms.validators import DataRequired, NumberRange
 
-
+# Flask #
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] ='mysql://username:password@localhost/db_name'
 app.config['SECRET_KEY'] = 'cs50'
 db = SQLAlchemy(app)
 
-# Classes
+# Classes #
 class SellForm(FlaskForm):
     coins = FloatField('Coins', validators=[DataRequired(), NumberRange(min=0)])
     sell_bottom = IntegerField('Sell Bottom', validators=[DataRequired(), NumberRange(min=0)])
@@ -47,24 +47,26 @@ class ScenarioForm(FlaskForm):
     number_sce = IntegerField('Number Of Scenarios', validators=[DataRequired(), NumberRange(min=1, max=999)])
     submit = SubmitField('Create')
 
-# Functions
-# Truncate floats
+# Functions #
 def trunc(a, x):
     int1 = int(a * (10**x))/(10**x)
     return float(int1)
 
-def plot_histogram(data, filename):
-    sns.set_palette("dark")    
-    # Generate histogram
-    plt.hist(data, bins='auto', color='darkblue', alpha=0.7)    
-    # Add rug plot
-    sns.rugplot(data, height=0.1, color='black')    
-    # Customize labels and title
-    plt.xlabel('Scenario Value')
-    plt.ylabel('Frequency')
-    plt.title('Distribution of Randomly Generated Scenarios')    
-    # Save the modified histogram plot
-    plt.savefig(os.path.join(app.root_path, 'static', filename))
+import seaborn as sns
+import matplotlib.pyplot as plt
+import os
+
+def plot_histogram(data, filename, width=9, height=6):
+    plt.figure(figsize=(width, height))
+    sns.set_palette("dark")
+    sns.histplot(data, kde=False, color='darkblue', alpha=0.7, edgecolor='lightgray')       
+    plt.gca().set_facecolor('none')
+    plt.xlabel('Scenario Value', color='lightgray')
+    plt.ylabel('Frequency', color='lightgray')
+    plt.title('Distribution of Randomly Generated Scenarios', color='lightgray')    
+    plt.xticks(color='lightgray')
+    plt.yticks(color='lightgray')
+    plt.savefig(os.path.join(app.root_path, 'static', filename), transparent=True)
     plt.close()
 
 def sell_order(coins, str_steps, price_normalize, scenario, file=None):
@@ -106,7 +108,6 @@ def buy_order(money, str_steps, price_normalize, scenario, file=None):
 sell_strategies = []
 buy_strategies = []
 
-
 def create_sell_strategies(sell_bottom, sell_top, steps, step_increment):
     sell_strategies.clear()
     for i in range(sell_bottom, sell_top, step_increment):
@@ -119,6 +120,18 @@ def create_buy_strategies(buy_bottom, buy_top, steps, step_increment):
         for j in range(i+step_increment, buy_top+1, step_increment):
             buy_strategies.append({"name": f"Strategy {i}-{j}", "buy_top": j, "buy_bottom": i, "steps": steps})
 
+def stats_sce(mu, sigma, scenarios):
+    percentiles = np.percentile(scenarios, [5, 95])
+    sce_stats =  {
+            'mu': mu,
+            'sigma': sigma,
+            'min': min(scenarios),
+            'max': max(scenarios),
+            '5th_percentile': percentiles[0],
+            '95th_percentile': percentiles[1]}     
+    return sce_stats
+
+# Routes #
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -138,50 +151,53 @@ def sell():
         mu = float(form.mu.data)
         sigma = float(form.sigma.data)
         number_sce = int(form.number_sce.data)
-      
+        # Create strategies
         create_sell_strategies(sell_bottom, sell_top, steps, step_increment)
         scenarios = [random.gauss(mu, sigma) for i in range(number_sce)]
         scenarios_str = ', '.join(map(str, scenarios))
         plot_histogram(scenarios, 'histogram.png')
+        # Write report
         with open('sell_report.txt', 'w') as file:
             file.write(f"User input: coins: {coins}, sell_bottom: {sell_bottom}, sell_top: {sell_top,}, steps: {steps}, step_increment: {step_increment}, mu: {mu}, sigma: {sigma}, number_sce: {number_sce}\n\n")
             file.write(f"Sell Strategies:\n{sell_strategies}\n\n")
             file.write(f"Scenarios\n{scenarios_str}\n\n")
             file.flush()
+            # Create steps for strategies
             for strategy in sell_strategies:
                 total_profit = 0
                 step_size = (strategy["sell_top"] - strategy["sell_bottom"]) / (strategy["steps"] - 1)
                 str_steps = []
                 file.write(f"\nStrategy: {strategy}\n")
                 file.flush()
-                # Writing all strategy steps to a list
                 for i in range(strategy["steps"]):
                     price = strategy["sell_bottom"] + (i * step_size)
                     str_steps.append(price)
+                # Calculating normalized price
                 price_sum = sum(str_steps)
                 price_denom = 0
                 for i in range(strategy["steps"]):
                     price_denom += price_sum / str_steps[i]
                 price_normalize = price_sum / price_denom
-
+                # Calculating results
                 for scenario in scenarios:
                     file.write(f"\nScenario: {scenario}\n")
                     coins = float(form.coins.data)
                     profit, coins = sell_order(coins, str_steps, price_normalize, scenario, file=file)
-                    total_profit += profit
-                            
+                    total_profit += profit                            
                 avg_profit = (total_profit / len(scenarios))
                 strategy_profits.append((strategy['name'], avg_profit))
-
             sorted_strategies = sorted(strategy_profits, key=lambda x: x[1], reverse=True)       
+            # Write report            
             file.write(f"Sorted Strategies: {sorted_strategies}")
             file.close()
-
+        # Error handling
         if not strategy_profits:
             flash('No results found.', 'warning')
+            # Return values
             return redirect(url_for('sell'))
-        return render_template('sell_results.html', sorted_strategies=sorted_strategies, scenarios=scenarios)
-
+        sorted_scenarios = sorted(scenarios, reverse=True)
+        sce_stats = stats_sce(mu, sigma, scenarios)
+        return render_template('sell_results.html', sorted_strategies=sorted_strategies, sorted_scenarios=sorted_scenarios)
     return render_template('sell.html', form=form)
 
 @app.route('/buy.html', methods=['GET', 'POST'])
@@ -246,7 +262,9 @@ def buy():
         if not strategy_amounts:
             flash('No results found.', 'warning')
             return redirect(url_for('buy'))
-        return render_template('buy_results.html', sorted_strategies=sorted_strategies)
+        sorted_scenarios = sorted(scenarios, reverse=True)
+        sce_stats = stats_sce(mu, sigma, scenarios)
+        return render_template('buy_results.html', sorted_strategies=sorted_strategies, sorted_scenarios=sorted_scenarios, sce_stats=sce_stats)
 
     return render_template('buy.html', form=form)
 
@@ -259,14 +277,8 @@ def scenario():
         number_sce = int(form.number_sce.data)
         scenarios = [random.gauss(mu, sigma) for i in range(number_sce)]
         scenarios_str = ', '.join(map(str, scenarios))
-        percentiles = np.percentile(scenarios, [5, 95])
-        sce_stats =  {
-            'mu': mu,
-            'sigma': sigma,
-            'min': min(scenarios),
-            'max': max(scenarios),
-            '5th_percentile': percentiles[0],
-            '95th_percentile': percentiles[1]}   
+        sce_stats = stats_sce(mu, sigma, scenarios)
+
         plot_histogram(scenarios, 'histogram.png') 
         with open('scenario_report.txt', 'w') as file:
             file.write(f"Scenario parameters: mu: {mu}, sigma: {sigma}, number_sce: {number_sce}\n\n")
