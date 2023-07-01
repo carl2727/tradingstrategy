@@ -2,26 +2,32 @@
 
 {% block body %}
 <div class="container">
-  <div class="left-container">
-    <h2>Sell Results</h2>
-    <img src="{{ url_for('static', filename='histogram.png') }}" alt="Histogram">
+    <div class="left-container">
+      <h2>Scenarios</h2>
+      <ul class="multi-column-list">
+      {% for scenario in sorted_scenarios %}
+        <li>{{ scenario||currency}}</li>
+      {% endfor %}
+    </ul>
   </div>
-
+  
   <div class="middle-container">
-    <h2>Strategy Data</h2>
+    <h2>Sell results</h2>
+    <img src="{{ url_for('static', filename='histogram.png') }}" alt="Histogram">
     <table class="table">
       <thead>
         <tr>
-          <th>Strategy Name</th>
+          <th>Sell Top</th>
+          <th>Sell Bottom</th>
           <th>Average Profit</th>
         </tr>
       </thead>
       <tbody>
         {% for strategy in sorted_strategies %}
           <tr>
-            <td>{{ strategy[0] }}</td>
-            <td>{{ strategy[1] }}</td>
-            <td>{{ strategy[2]}}</td>
+            <td>{{ strategy[0]|currency}}</td>
+            <td>{{ strategy[1]|currency}}</td>
+            <td>{{ strategy[2]|currency}}</td>
           </tr>
         {% endfor %}
       </tbody>
@@ -29,10 +35,10 @@
   </div>
 
   <div class="right-container">
-    <h2>Scenarios</h2>
-    <ul>
-      {% for scenario in sorted_scenarios %}
-      <li>{{ scenario|round(2)}}</li>
+    <h2>Parameters</h2>
+    <ul style="list-style-type: none; padding-left: 0;">
+      {% for key, value in sce_stats.items() %}
+      <li style="font-size: 16px;"><strong>{{ key }}:</strong>{{ value|round(2) }}</li>
       {% endfor %}
     </ul>
   </div>

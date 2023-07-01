@@ -20,8 +20,8 @@
 .form-container {
   width: 500px;
   margin: 0 auto;
-  background-color: #4b4b4b; /* Set the background color of the container */
-  padding: 20px; /* Add padding to the container */
+  background-color: #4b4b4b;
+  padding: 20px;
   border-radius: 8px;
 }
 
@@ -98,6 +98,7 @@ body {
   padding: 0.5em;
   color: lightgrey;
   text-align: left;
+  line-height: 0.2;
 }
 
 .table th {
@@ -106,10 +107,10 @@ body {
 }
 
 .multi-column-list {
-  -webkit-column-count: 5;  /* Number of columns */
+  -webkit-column-count: 5;
   -moz-column-count: 5;
   column-count: 5;
-  -webkit-column-gap: 5px;  /* Gap between columns */
+  -webkit-column-gap: 5px;
   -moz-column-gap: 5px;
   column-gap: 5px;
   list-style-type: none;
