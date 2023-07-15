@@ -1,6 +1,5 @@
 from flask import Flask, render_template
 import random
-from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 import locale
 import matplotlib
@@ -12,13 +11,11 @@ import seaborn as sns
 from wtforms import Form, FloatField, IntegerField, StringField, SubmitField
 from wtforms.validators import DataRequired, NumberRange
 
-# Flask #
+# === Flask Configuration ===
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] ='mysql://username:password@localhost/db_name'
 app.config['SECRET_KEY'] = 'cs50'
-db = SQLAlchemy(app)
 
-# Classes #
+# === Classes ===
 class SellForm(FlaskForm):
     coins = FloatField('Coins', validators=[DataRequired(), NumberRange(min=0)])
     sell_bottom = IntegerField('Sell Bottom', validators=[DataRequired(), NumberRange(min=0)])
@@ -48,7 +45,7 @@ class ScenarioForm(FlaskForm):
     number_sce = IntegerField('Number Of Scenarios', validators=[DataRequired(), NumberRange(min=1, max=999)])
     submit = SubmitField('Create')
 
-# Functions #
+# === Functions ===
 def trunc(a, x):
     int1 = int(a * (10**x))/(10**x)
     return float(int1)
@@ -72,6 +69,7 @@ def plot_histogram(data, filename, width=9, height=6):
 
 def sell_order(coins, str_steps, price_normalize, scenario, file=None):
     profit = 0
+    rating = 0
     file.write(f"Sell order - Coins: {coins}\n")
     for i, val in enumerate(str_steps):
         try:
@@ -83,9 +81,10 @@ def sell_order(coins, str_steps, price_normalize, scenario, file=None):
             sell = sell_amount * int(val)
             coins -= sell_amount
             profit += sell
+            rating += (scenario/val)/len(str_steps)
             file.write(f"at {val}, sold {sell_amount} for {sell}. Total Profit: {profit}\n")
             file.flush()
-    return profit, coins
+    return profit, coins, rating
 
 def buy_order(money, str_steps, price_normalize, scenario, file=None):
     coins = 0
@@ -132,7 +131,7 @@ def stats_sce(mu, sigma, scenarios):
             '95th_percentile': percentiles[1]}     
     return sce_stats
 
-# Routes #
+# === Routes ===
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -166,6 +165,7 @@ def sell():
             # Create steps for strategies
             for strategy in sell_strategies:
                 total_profit = 0
+                total_rating = 0
                 step_size = (strategy["sell_top"] - strategy["sell_bottom"]) / (strategy["steps"] - 1)
                 str_steps = []
                 file.write(f"\nStrategy: {strategy}\n")
@@ -184,10 +184,12 @@ def sell():
                 for scenario in scenarios:
                     file.write(f"\nScenario: {scenario}\n")
                     coins = float(form.coins.data)
-                    profit, coins = sell_order(coins, str_steps, price_normalize, scenario, file=file)
-                    total_profit += profit                            
+                    profit, coins, rating = sell_order(coins, str_steps, price_normalize, scenario, file=file)
+                    total_profit += profit
+                    total_rating += rating                            
                 avg_profit = (total_profit / len(scenarios))
-                strategy_profits.append((strategy['sell_top'], strategy['sell_bottom'], avg_profit))
+                avg_rating = (total_rating / len(scenarios))
+                strategy_profits.append((strategy['sell_top'], strategy['sell_bottom'], strategy['steps'], avg_profit, avg_rating))
             sorted_strategies = sorted(strategy_profits, key=lambda x: x[2], reverse=True)       
             # Write report            
             file.write(f"Sorted Strategies: {sorted_strategies}")
@@ -195,8 +197,8 @@ def sell():
         # Error handling
         if not strategy_profits:
             flash('No results found.', 'warning')
-            # Return values
             return redirect(url_for('sell'))
+        # Return values
         sorted_scenarios = sorted(scenarios, reverse=True)
         sce_stats = stats_sce(mu, sigma, scenarios)
         return render_template('sell_results.html', sorted_strategies=sorted_strategies, sorted_scenarios=sorted_scenarios, sce_stats=sce_stats)
@@ -256,24 +258,24 @@ def buy():
                 avg_coins = (total_coins / len(scenarios))
                 avg_rating = (total_rating / len(scenarios))
                 file.write(f"avg_coins: {avg_coins} total_coins {total_coins}\n")
-                strategy_amounts.append((strategy['buy_bottom'], strategy['buy_top'], strategy['steps'], avg_coins, avg_rating))
-                                    
-                sorted_strategies = sorted(strategy_amounts, key=lambda x: x[4], reverse=True)       
+                strategy_amounts.append((strategy['buy_bottom'], strategy['buy_top'], strategy['steps'], avg_coins, avg_rating))                                    
+            sorted_strategies = sorted(strategy_amounts, key=lambda x: x[4], reverse=True)       
             file.write(f"Sorted Strategies: {sorted_strategies}\n")
             file.close()
-
+        # Error handling
         if not strategy_amounts:
             flash('No results found.', 'warning')
             return redirect(url_for('buy'))
+        # Return values
         sorted_scenarios = sorted(scenarios, reverse=True)
         sce_stats = stats_sce(mu, sigma, scenarios)
         return render_template('buy_results.html', sorted_strategies=sorted_strategies, sorted_scenarios=sorted_scenarios, sce_stats=sce_stats)
-
     return render_template('buy.html', form=form)
 
 @app.route('/scenarios.html', methods=['GET', 'POST'])
 def scenario():
     form = ScenarioForm()
+    # Validate forms
     if form.validate_on_submit():
         mu = float(form.mu.data)
         sigma = float(form.sigma.data)
@@ -281,12 +283,13 @@ def scenario():
         scenarios = [random.gauss(mu, sigma) for i in range(number_sce)]
         scenarios_str = ', '.join(map(str, scenarios))
         sce_stats = stats_sce(mu, sigma, scenarios)
-
         plot_histogram(scenarios, 'histogram.png') 
+        # Report
         with open('scenario_report.txt', 'w') as file:
             file.write(f"Scenario parameters: mu: {mu}, sigma: {sigma}, number_sce: {number_sce}\n\n")
             file.write(f"Scenarios\n{scenarios_str}\n\n")
             file.close()
+        # Return values
         sorted_scenarios = sorted(scenarios, reverse=True)   
         return render_template('scenario_results.html', sorted_scenarios = sorted_scenarios, sce_stats = sce_stats)
     
