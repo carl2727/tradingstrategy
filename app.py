@@ -1,6 +1,5 @@
 from flask import Flask, render_template
 import random
-from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 import locale
 import matplotlib
@@ -14,9 +13,7 @@ from wtforms.validators import DataRequired, NumberRange
 
 # Flask #
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] ='mysql://username:password@localhost/db_name'
 app.config['SECRET_KEY'] = 'cs50'
-db = SQLAlchemy(app)
 
 # Classes #
 class SellForm(FlaskForm):
@@ -49,13 +46,6 @@ class ScenarioForm(FlaskForm):
     submit = SubmitField('Create')
 
 # Functions #
-def trunc(a, x):
-    int1 = int(a * (10**x))/(10**x)
-    return float(int1)
-
-import seaborn as sns
-import matplotlib.pyplot as plt
-import os
 
 def plot_histogram(data, filename, width=9, height=6):
     plt.figure(figsize=(width, height))
