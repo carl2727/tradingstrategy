@@ -6,7 +6,7 @@
       <h2>Scenarios</h2>
       <ul class="multi-column-list">
       {% for scenario in sorted_scenarios %}
-        <li>{{ scenario||currency}}</li>
+        <li>{{ scenario|currency}}</li>
       {% endfor %}
     </ul>
   </div>
@@ -28,6 +28,8 @@
             <td>{{ strategy[0]|currency}}</td>
             <td>{{ strategy[1]|currency}}</td>
             <td>{{ strategy[2]|currency}}</td>
+            <td>{{ strategy[3]|currency}}</td>
+            <td>{{ strategy[4]|currency}}</td>
           </tr>
         {% endfor %}
       </tbody>
